@@ -1,0 +1,290 @@
+Create database Adventurework_db;
+
+Use AdventureWork_DB;
+
+ CREATE TABLE Customers (
+    CustomerKey INT PRIMARY KEY,
+    Prefix VARCHAR(10),
+    FirstName VARCHAR(50),
+    LastName VARCHAR(50),
+    BirthDate DATE,
+    MaritalStatus CHAR(1),
+    Gender CHAR(1),
+    EmailAddress VARCHAR(100),
+    AnnualIncome INT,
+    TotalChildren INT,
+    EducationLevel VARCHAR(50),
+    Occupation VARCHAR(50),
+    HomeOwner VARCHAR(3)
+);
+
+CREATE TABLE ProductCategories (
+    ProductCategoryKey INT PRIMARY KEY,
+    CategoryName VARCHAR(50)
+);
+
+CREATE TABLE Subcategories (
+    ProductSubcategoryKey INT PRIMARY KEY,
+    SubcategoryName VARCHAR(50),
+    ProductCategoryKey INT,
+    FOREIGN KEY (ProductCategoryKey) REFERENCES ProductCategories(ProductCategoryKey)
+);
+
+CREATE TABLE Products (
+    ProductKey INT PRIMARY KEY,
+    ProductSubcategoryKey INT,
+    ProductSKU VARCHAR(20),
+    ProductName VARCHAR(100),
+    ModelName VARCHAR(100),
+    ProductDescription VARCHAR(100),
+    ProductColor VARCHAR(20),
+    ProductSize VARCHAR(10),
+    ProductStyle VARCHAR(20),
+    ProductCost DECIMAL(18, 2),
+    ProductPrice DECIMAL(18, 2),
+    FOREIGN KEY (ProductSubcategoryKey) REFERENCES Subcategories(ProductSubcategoryKey)
+);
+
+CREATE TABLE Territories (
+    SalesTerritoryKey INT PRIMARY KEY,
+    Region VARCHAR(50),
+    Country VARCHAR(50),
+    Continent VARCHAR(50)
+);
+
+CREATE TABLE Returns (
+    ReturnDate DATE,
+    TerritoryKey INT,
+    ProductKey INT,
+    ReturnQuantity INT,
+    PRIMARY KEY (ReturnDate, TerritoryKey, ProductKey),
+    FOREIGN KEY (TerritoryKey) REFERENCES Territories(SalesTerritoryKey),
+    FOREIGN KEY (ProductKey) REFERENCES Products(ProductKey)
+);
+
+CREATE TABLE Orders (
+    OrderDate DATE,
+    StockDate DATE,
+    OrderNumber INT PRIMARY KEY,
+    ProductKey INT,
+    CustomerKey INT,
+    TerritoryKey INT,
+    OrderLineItem INT,
+    OrderQuantity INT,
+    FOREIGN KEY (ProductKey) REFERENCES Products(ProductKey),
+    FOREIGN KEY (CustomerKey) REFERENCES Customers(CustomerKey),
+    FOREIGN KEY (TerritoryKey) REFERENCES Territories(SalesTerritoryKey)
+);
+
+CREATE TABLE Sales2015 AS
+SELECT *
+FROM Sales
+WHERE YEAR(OrderDate) = 2015;
+
+CREATE TABLE Sales2016 AS
+SELECT *
+FROM Sales
+WHERE YEAR(OrderDate) = 2016;
+
+CREATE TABLE Sales2017 AS
+SELECT *
+FROM Sales
+WHERE YEAR(OrderDate) = 2017;
+
+Alter table sales2015
+modify OrderNumber varchar (50);
+
+Alter table sales2016
+modify OrderNumber varchar (50);
+
+Alter table sales2017
+modify OrderNumber varchar (50);
+
+ALter table products
+modify Productcost decimal (8, 5);
+
+ALter table products
+modify ProductPrice decimal (8, 5);
+
+select * from territories;
+
+-------- ------ ------- ------ ---------------------- ----------------- ------------------------ ---------------------- --------------
+What is the total annual income of all customers?
+
+SELECT SUM(AnnualIncome) AS TotalAnnualIncome FROM Customers;
+
+
+------------ --------------------- ------------------- ----------------- -----------------
+How many products are there in each category and subcategory?
+
+SELECT
+    productcategories.ProductCategoryKey,
+    productcategories.CategoryName,
+    subcategories. ProductSubcategoryKey,
+    subcategories.SubcategoryName
+FROM
+    productcategories
+JOIN
+    subcategories ON productcategories.ProductCategoryKey = subcategories.ProductCategoryKey;
+    
+    --------- --------------- ----------------- ----------------- ---------------
+    What is the average order quantity?
+
+
+SELECT AVG(OrderQuantity) AS AverageOrderQuantity
+FROM sales2016
+WHERE YEAR(OrderDate) = 2016;
+
+SELECT AVG(OrderQuantity) AS AverageOrderQuantity
+FROM sales2017
+WHERE YEAR(OrderDate) = 2017;
+
+---------- ------------- ----------- ------------------ --------------------
+What is the distribution of customers based on their education level?
+
+SELECT EducationLevel, COUNT(*) AS NumberOfCustomers
+FROM Customers
+GROUP BY EducationLevel;
+
+----------- ----------------------- ----------------------- ---------------
+How many customers own homes, and what is their average annual income?
+
+SELECT COUNT(*) AS HomeownersCount, AVG(AnnualIncome) AS AverageIncome
+FROM Customers
+WHERE HomeOwner = 'Yes';
+
+---------------- ----------------- ---------------------------- -----------------------
+Which product has the highest/lowest price?
+
+Highest -
+SELECT ProductName, ProductPrice
+FROM Products
+ORDER BY ProductPrice DESC
+LIMIT 1;
+
+-------------- ----------------- ------------------- ---------------------
+
+Lowest - 
+SELECT ProductName, ProductPrice
+FROM Products
+ORDER BY ProductPrice
+LIMIT 1;
+
+---------- ------------------ -------------- ---------------- ----------------
+What is the most common product color?
+
+SELECT ProductColor, COUNT(*) AS ColorCount
+FROM Products
+GROUP BY ProductColor
+ORDER BY ColorCount DESC
+LIMIT 1;
+
+----------- -------------------- ---------------------- ---------------------- -----------
+What is the total revenue generated by each sales territory?
+
+SELECT
+    T.Region,
+    SUM(P.ProductPrice * O.OrderQuantity) AS TotalRevenue
+FROM Orders AS O
+JOIN Territories AS T ON O.TerritoryKey = T.SalesTerritoryKey
+JOIN Products AS P ON O.ProductKey = P.ProductKey
+GROUP BY T.Region;
+
+
+------------ --------------- --------------- --------------- ------------------------
+
+CREATE TABLE Orders AS
+SELECT * FROM sales2015
+UNION ALL
+SELECT * FROM sales2016
+UNION ALL
+SELECT * FROM sales2017;
+
+------------ ----------------------- -------------------- -----------------
+Which year had the highest total sales?
+
+SELECT YEAR(o.OrderDate) AS SalesYear, SUM(o.OrderQuantity * p.ProductPrice) AS TotalSales
+FROM Orders o
+INNER JOIN Products p ON o.ProductKey = p.ProductKey
+GROUP BY YEAR(o.OrderDate)
+ORDER BY TotalSales DESC
+LIMIT 1;
+
+----------- ---------------- --------------- ----------------------- --------
+What products have the highest return quantity?
+
+SELECT t.Region, COUNT(r.ReturnQuantity) AS TotalReturns
+FROM Returns r
+INNER JOIN Territories t ON r.TerritoryKey = t.SalesTerritoryKey
+GROUP BY t.Region
+ORDER BY TotalReturns DESC;
+
+
+--------- ----------- ------------ ---------- ---------- -
+How has the annual income of customers changed over the years?
+
+SELECT 
+    YEAR(o.OrderDate) AS Year,
+    AVG(c.AnnualIncome) AS AverageAnnualIncome
+FROM Orders o
+INNER JOIN Customers c ON o.CustomerKey = c.CustomerKey
+GROUP BY YEAR(o.OrderDate)
+ORDER BY Year;
+
+----------------- -------------------- ---------------------- -------------------
+Is there a specific time period with a notable increase or decrease in orders?
+
+WITH MonthlyOrders AS (
+    SELECT
+        YEAR(OrderDate) AS Year,
+        MONTH(OrderDate) AS Month,
+        SUM(OrderQuantity) AS TotalOrders
+    FROM Orders
+    GROUP BY YEAR(OrderDate), MONTH(OrderDate)
+)
+SELECT
+    CONCAT(Year, '-', LPAD(Month, 2, '0')) AS YearMonth,
+    TotalOrders,
+    LAG(TotalOrders) OVER (ORDER BY Year, Month) AS PreviousMonthOrders,
+    CASE
+        WHEN TotalOrders > LAG(TotalOrders) OVER (ORDER BY Year, Month) THEN 'Increase'
+        WHEN TotalOrders < LAG(TotalOrders) OVER (ORDER BY Year, Month) THEN 'Decrease'
+        ELSE 'No Change'
+    END AS OrderTrend
+FROM MonthlyOrders
+ORDER BY Year, Month;
+
+------------- ------------------- ------------------ ------------------- ----------------------
+Are there correlations between a customers education level and their product preferences?
+
+SELECT
+    EducationLevel,
+    SubcategoryName,
+    COUNT(*) AS PreferenceCount
+FROM Customers AS C
+JOIN Orders AS O ON C.CustomerKey = O.CustomerKey
+JOIN Products AS P ON O.ProductKey = P.ProductKey
+JOIN Subcategories AS S ON P.ProductSubcategoryKey = S.ProductSubcategoryKey
+GROUP BY EducationLevel, SubcategoryName
+ORDER BY EducationLevel, PreferenceCount DESC;
+
+----------- ---------------------- -------------------- -----------------------
+How do returns correlate with specific products or product categories?
+
+SELECT
+    P.ProductName,
+    R.ReturnQuantity
+FROM Returns AS R
+JOIN Products AS P ON R.ProductKey = P.ProductKey
+ORDER BY R.ReturnQuantity DESC;
+
+--------- ------------------------------ ----------------------------------
+
+
+
+
+
+
+
+
+
